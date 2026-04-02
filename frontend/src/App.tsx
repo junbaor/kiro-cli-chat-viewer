@@ -4,7 +4,7 @@ import type { ConversationGroup, Conversation, Message } from "./types"
 import { cn, formatRelativeTime, formatTimestamp } from "./lib/utils"
 import {
   ChevronRight, ChevronDown, User, Bot, Wrench, Clock,
-  Folder, MessageSquare, Download, X, Terminal, Menu, ArrowLeft,
+  Folder, MessageSquare, Download, X, Terminal, Menu,
   ChevronsUpDown, ArrowUp, Sun, Moon, Monitor, BrainCircuit
 } from "lucide-react"
 import { useTheme } from "./hooks/useTheme"
@@ -420,20 +420,11 @@ function App() {
             {/* Chat header */}
             <div className="h-14 border-b px-3 sm:px-4 flex items-center justify-between bg-card gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                {/* Mobile back button */}
+                {/* Mobile: open sidebar directly */}
                 <Button
                   variant="ghost"
                   size="icon"
                   className="flex-shrink-0 md:hidden"
-                  onClick={() => setSelectedConv(null)}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-                {/* Mobile menu button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="flex-shrink-0 hidden md:hidden"
                   onClick={() => setSidebarOpen(true)}
                 >
                   <Menu className="w-4 h-4" />
