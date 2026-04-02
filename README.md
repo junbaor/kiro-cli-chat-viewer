@@ -16,6 +16,10 @@ A web-based viewer for [Kiro CLI](https://kiro.dev) chat history. It reads the l
 - Mobile-friendly responsive UI
 - Single binary, zero dependencies at runtime
 
+## Screenshot
+
+![preview](https://raw.githubusercontent.com/junbaor/kiro-cli-chat-viewer/master/screenshots/preview.png)
+
 ## Quick Install
 
 ```bash
