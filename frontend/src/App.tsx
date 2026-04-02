@@ -1,23 +1,22 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import { fetchConversations, fetchConversation, searchConversations, exportConversation } from "./api"
+import { fetchConversations, fetchConversation, exportConversation } from "./api"
 import type { ConversationGroup, Conversation, Message } from "./types"
 import { cn, formatRelativeTime, formatTimestamp } from "./lib/utils"
 import {
-  Search, ChevronRight, ChevronDown, User, Bot, Wrench, Clock,
-  Folder, MessageSquare, Download, X, Terminal, Loader2, Menu, ArrowLeft,
-  ChevronsUpDown, ArrowUp, Sun, Moon, Monitor
+  ChevronRight, ChevronDown, User, Bot, Wrench, Clock,
+  Folder, MessageSquare, Download, X, Terminal, Menu, ArrowLeft,
+  ChevronsUpDown, ArrowUp, Sun, Moon, Monitor, BrainCircuit
 } from "lucide-react"
 import { useTheme } from "./hooks/useTheme"
 import { ScrollArea } from "./components/ui/scroll-area"
 import { Button } from "./components/ui/button"
-import { Input } from "./components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
 import { JsonViewerModal, JsonFormatButton } from "./components/JsonViewer"
 
 const MAX_COLLAPSED_LINES = 8
 const MAX_COLLAPSED_CHARS = 500
 
-function CollapsibleText({ text, className }: { text: string; className?: string }) {
+function CollapsibleText({ text, className, variant = "default" }: { text: string; className?: string; variant?: "default" | "user" }) {
   const [expanded, setExpanded] = useState(false)
   const needsCollapse = useMemo(() => {
     return text.length > MAX_COLLAPSED_CHARS || text.split("\n").length > MAX_COLLAPSED_LINES
@@ -41,7 +40,12 @@ function CollapsibleText({ text, className }: { text: string; className?: string
       {needsCollapse && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-1 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+          className={cn(
+            "mt-1 flex items-center gap-1 text-xs transition-colors",
+            variant === "user"
+              ? "text-primary-foreground/80 hover:text-primary-foreground"
+              : "text-primary hover:text-primary/80"
+          )}
         >
           <ChevronsUpDown className="w-3 h-3" />
           {expanded ? "收起" : `展开全部 (${text.split("\n").length} 行)`}
@@ -55,9 +59,6 @@ function App() {
   const [groups, setGroups] = useState<ConversationGroup[]>([])
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Conversation[]>([])
-  const [searching, setSearching] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState("conversations")
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -67,6 +68,9 @@ function App() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [jsonModal, setJsonModal] = useState<{ data: unknown; title: string } | null>(null)
   const { theme, setTheme } = useTheme()
+  const [showToolCalls, setShowToolCalls] = useState(true)
+  const [showToolResults, setShowToolResults] = useState(true)
+  const [showThinking, setShowThinking] = useState(true)
 
   const cycleTheme = () => {
     const order: Array<"system" | "light" | "dark"> = ["system", "light", "dark"]
@@ -137,23 +141,6 @@ function App() {
     }
   }, [])
 
-  const handleSearch = useCallback(async (q: string) => {
-    setSearchQuery(q)
-    if (!q.trim()) {
-      setSearchResults([])
-      return
-    }
-    setSearching(true)
-    try {
-      const results = await searchConversations(q)
-      setSearchResults(results)
-    } catch (e) {
-      console.error("Search failed:", e)
-    } finally {
-      setSearching(false)
-    }
-  }, [])
-
   const handleExport = async (id: string) => {
     try {
       const markdown = await exportConversation(id)
@@ -198,11 +185,16 @@ function App() {
       content = content.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim()
     }
 
+    // Filter: hide tool result messages
+    if (isTool && !showToolResults) return null
+    // Filter: hide assistant messages that are purely tool calls (no text content)
+    if (isAssistant && !showToolCalls && parsedCalls && parsedCalls.length > 0 && !content && !thinkingBlock) return null
+
     const msgId = `msg-${idx}`
 
     return (
       <div key={msgId} className="flex flex-col gap-2">
-        {thinkingBlock && (
+        {showThinking && thinkingBlock && (
           <div className="bg-muted rounded-lg p-3 text-sm border-l-2 border-primary">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
               <Bot className="w-3 h-3" /> AI 思考中...
@@ -244,14 +236,14 @@ function App() {
                   </div>
                 )}
                 {content && (
-                  <CollapsibleText text={content} className="overflow-y-hidden font-sans" />
+                  <CollapsibleText text={content} className="overflow-y-hidden font-sans" variant={isUser ? "user" : "default"} />
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {parsedCalls && parsedCalls.length > 0 && (
+        {showToolCalls && parsedCalls && parsedCalls.length > 0 && (
           <div className="ml-2 sm:ml-11 flex flex-col gap-2 min-w-0 overflow-hidden">
             {parsedCalls.map((call) => {
               let args: string
@@ -296,23 +288,6 @@ function App() {
             {theme === "system" ? <Monitor className="w-4 h-4" /> : theme === "light" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索对话..."
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-9 h-9 text-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => handleSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
-        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -324,37 +299,6 @@ function App() {
         <TabsContent value="conversations" className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-2">
-              {searchQuery ? (
-                <div className="space-y-1">
-                  {searching ? (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      <span className="text-sm">搜索中...</span>
-                    </div>
-                  ) : searchResults.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">未找到相关对话</div>
-                  ) : (
-                    searchResults.map((conv) => (
-                      <button
-                        key={conv.conversation_id}
-                        onClick={() => selectConversation(conv)}
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2",
-                          selectedConv?.conversation_id === conv.conversation_id
-                            ? "bg-primary/10 text-primary"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                        <div className="flex-1 overflow-hidden">
-                          <div className="font-medium truncate">{conv.cwd || "无标题"}</div>
-                          <div className="text-xs text-muted-foreground truncate">{formatRelativeTime(conv.created_at)}</div>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : (
                 <div className="space-y-1">
                   {groups.map((group) => {
                     const isExpanded = expandedGroups.has(group.key)
@@ -398,7 +342,6 @@ function App() {
                     <div className="text-center py-8 text-muted-foreground text-sm">暂无会话记录</div>
                   )}
                 </div>
-              )}
             </div>
           </ScrollArea>
         </TabsContent>
@@ -530,6 +473,47 @@ function App() {
                   <X className="w-4 h-4" />
                 </Button>
               </div>
+            </div>
+
+            {/* Filter bar */}
+            <div className="border-b px-3 sm:px-4 py-1.5 bg-card/80 flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-muted-foreground mr-1">显示:</span>
+              <button
+                onClick={() => setShowToolCalls(v => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border",
+                  showToolCalls
+                    ? "bg-secondary text-secondary-foreground border-border"
+                    : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/30"
+                )}
+              >
+                <Wrench className="w-3 h-3" />
+                工具调用
+              </button>
+              <button
+                onClick={() => setShowToolResults(v => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border",
+                  showToolResults
+                    ? "bg-secondary text-secondary-foreground border-border"
+                    : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/30"
+                )}
+              >
+                <Terminal className="w-3 h-3" />
+                工具结果
+              </button>
+              <button
+                onClick={() => setShowThinking(v => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border",
+                  showThinking
+                    ? "bg-secondary text-secondary-foreground border-border"
+                    : "bg-transparent text-muted-foreground border-dashed border-muted-foreground/30"
+                )}
+              >
+                <BrainCircuit className="w-3 h-3" />
+                思考过程
+              </button>
             </div>
 
             {/* Messages */}

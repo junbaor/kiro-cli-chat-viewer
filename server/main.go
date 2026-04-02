@@ -17,6 +17,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+var (
+	version   = "dev"
+	buildTime = ""
+)
+
 //go:embed dist
 var staticFiles embed.FS
 
@@ -161,8 +166,16 @@ func parseHistory(history []json.RawMessage) []message {
 			var user map[string]json.RawMessage
 			if json.Unmarshal(userRaw, &user) == nil {
 				if content, ok := user["content"]; ok {
+					// Check if this is a ToolUseResults message
+					role := "user"
+					var obj map[string]json.RawMessage
+					if json.Unmarshal(content, &obj) == nil {
+						if _, isTUR := obj["ToolUseResults"]; isTUR {
+							role = "tool"
+						}
+					}
 					if text := getTextContent(content); text != "" {
-						messages = append(messages, message{Role: "user", Content: text})
+						messages = append(messages, message{Role: role, Content: text})
 					}
 				}
 			}
@@ -219,25 +232,7 @@ func parseHistory(history []json.RawMessage) []message {
 }
 
 func countMessages(history []json.RawMessage) int {
-	count := 0
-	for _, raw := range history {
-		var turn map[string]json.RawMessage
-		if json.Unmarshal(raw, &turn) != nil {
-			continue
-		}
-		if userRaw, ok := turn["user"]; ok {
-			var user map[string]json.RawMessage
-			if json.Unmarshal(userRaw, &user) == nil {
-				if content, ok := user["content"]; ok && len(content) > 0 {
-					count++
-				}
-			}
-		}
-		if _, ok := turn["assistant"]; ok {
-			count++
-		}
-	}
-	return count
+	return len(parseHistory(history))
 }
 
 // --- HTTP handlers ---
@@ -331,51 +326,6 @@ func handleGetConversation(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
-}
-
-func handleSearch(w http.ResponseWriter, r *http.Request) {
-	q := strings.ToLower(r.URL.Query().Get("q"))
-	db, err := openDB()
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]any{})
-		return
-	}
-	defer db.Close()
-
-	rows, err := db.Query("SELECT key, conversation_id, created_at, updated_at, value FROM conversations_v2 ORDER BY created_at DESC")
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]any{})
-		return
-	}
-	defer rows.Close()
-
-	var results []convSummary
-	for rows.Next() {
-		var key, convID, value string
-		var createdAt, updatedAt int64
-		if err := rows.Scan(&key, &convID, &createdAt, &updatedAt, &value); err != nil {
-			continue
-		}
-		if strings.Contains(strings.ToLower(value), q) {
-			var val convValue
-			json.Unmarshal([]byte(value), &val)
-			results = append(results, convSummary{
-				ID: convID, Key: key, ConversationID: convID,
-				CreatedAt: createdAt, UpdatedAt: updatedAt,
-				CWD: getCWD(&val), History: []any{},
-			})
-		}
-		if len(results) >= 50 {
-			break
-		}
-	}
-	if results == nil {
-		results = []convSummary{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
 }
 
 func handleExport(w http.ResponseWriter, r *http.Request) {
@@ -478,7 +428,6 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/conversations", handleListConversations)
 	mux.HandleFunc("/api/conversations/", handleGetConversation)
-	mux.HandleFunc("/api/search", handleSearch)
 	mux.HandleFunc("/api/export/", handleExport)
 
 	// Serve embedded static files (production)
@@ -499,6 +448,6 @@ func main() {
 		fileServer.ServeHTTP(w, r)
 	})
 
-	log.Printf("Kiro Chat Viewer starting on http://0.0.0.0:%s", port)
+	log.Printf("Kiro Chat Viewer %s (built %s) starting on http://0.0.0.0:%s", version, buildTime, port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, mux))
 }

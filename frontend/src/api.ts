@@ -14,12 +14,6 @@ export async function fetchConversation(id: string): Promise<Conversation> {
   return res.json()
 }
 
-export async function searchConversations(query: string): Promise<Conversation[]> {
-  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`)
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
-}
-
 export async function exportConversation(id: string): Promise<string> {
   const res = await fetch(`${API_BASE}/export/${id}`)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
