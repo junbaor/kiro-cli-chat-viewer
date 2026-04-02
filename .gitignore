@@ -25,4 +25,4 @@ dist-ssr
 
 # Build output
 release/
-server/kiro-chat-viewer
+server/kiro-cli-chat-viewer

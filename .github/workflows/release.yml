@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Build binaries
+        run: |
+          APP_NAME="kiro-cli-chat-viewer"
+          VERSION="${GITHUB_REF#refs/tags/}"
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}"
+          mkdir -p release
+          for pair in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            GOOS="${pair%/*}"
+            GOARCH="${pair#*/}"
+            output="release/${APP_NAME}-${GOOS}-${GOARCH}"
+            echo "Building ${output}..."
+            cd server && CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build -ldflags "${LDFLAGS}" -o "../${output}" && cd ..
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/*

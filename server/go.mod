@@ -1,4 +1,4 @@
-module kiro-chat-viewer
+module kiro-cli-chat-viewer
 
 go 1.25.0
 

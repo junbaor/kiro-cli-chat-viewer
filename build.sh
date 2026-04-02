@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="kiro-chat-viewer"
+APP_NAME="kiro-cli-chat-viewer"
 VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}"

@@ -1,5 +1,5 @@
 {
-  "name": "kiro-chat-viewer",
+  "name": "kiro-cli-chat-viewer",
   "private": true,
   "version": "0.0.0",
   "type": "module",

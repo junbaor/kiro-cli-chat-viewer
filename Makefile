@@ -1,4 +1,4 @@
-APP_NAME := kiro-chat-viewer
+APP_NAME := kiro-cli-chat-viewer
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 

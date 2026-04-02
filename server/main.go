@@ -448,6 +448,6 @@ func main() {
 		fileServer.ServeHTTP(w, r)
 	})
 
-	log.Printf("Kiro Chat Viewer %s (built %s) starting on http://0.0.0.0:%s", version, buildTime, port)
+	log.Printf("Kiro CLI Chat Viewer %s (built %s) starting on http://0.0.0.0:%s", version, buildTime, port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, mux))
 }

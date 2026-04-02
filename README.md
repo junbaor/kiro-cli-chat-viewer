@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# kiro-cli-chat-viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based viewer for [Kiro CLI](https://kiro.dev) chat history. It reads the local SQLite database that Kiro CLI stores conversations in, and serves a clean UI to browse, search, and export them.
 
-Currently, two official plugins are available:
+![Go](https://img.shields.io/badge/Go-1.25-blue)
+![License](https://img.shields.io/github/license/junbaor/kiro-cli-chat-viewer)
+![Release](https://img.shields.io/github/v/release/junbaor/kiro-cli-chat-viewer)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Browse conversations grouped by workspace directory
+- View full chat history including tool calls, tool results, and AI thinking process
+- Toggle visibility of tool calls / tool results / thinking blocks
+- Export conversations to Markdown
+- Dark / Light / System theme
+- Mobile-friendly responsive UI
+- Single binary, zero dependencies at runtime
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Quick Install
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+curl -fsSL https://raw.githubusercontent.com/junbaor/kiro-cli-chat-viewer/master/install.sh | bash
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This will download the latest release binary for your platform and install it to `/usr/local/bin`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Usage
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Start with default port 8080
+kiro-cli-chat-viewer
+
+# Custom port
+PORT=3000 kiro-cli-chat-viewer
 ```
+
+Then open `http://localhost:8080` in your browser.
+
+## Data Source
+
+The viewer reads Kiro CLI's local SQLite database in read-only mode:
+
+| OS    | Path                                                    |
+|-------|---------------------------------------------------------|
+| macOS | `~/Library/Application Support/kiro-cli/data.sqlite3`   |
+| Linux | `~/.local/share/kiro-cli/data.sqlite3`                  |
+
+## Build from Source
+
+Prerequisites: Go 1.25+, Node.js 20+
+
+```bash
+# Build all platforms
+make release
+
+# Or build for a single platform
+make build-darwin-arm64
+```
+
+Output binaries are placed in the `release/` directory.
+
+## Project Structure
+
+```
+├── frontend/          # React + TypeScript + Vite + Tailwind CSS
+├── server/            # Go HTTP server with embedded frontend
+│   └── main.go        # Single-file server, reads SQLite, serves SPA
+├── Makefile           # Cross-platform build targets
+├── build.sh           # Build script alternative
+└── install.sh         # One-line installer
+```
+
+## License
+
+MIT
